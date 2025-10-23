@@ -11,32 +11,32 @@ public sealed class LuaState
     public const string DefaultChunkName = "chunk";
 
     // states
-    private readonly LuaMainThread _mainThread = new();
     private FastListCore<UpValue> _openUpValues;
     private FastStackCore<LuaThread> _threadStack;
-    private readonly LuaTable _packages = new();
-    private readonly LuaTable _environment;
-    private readonly LuaTable _registry = new();
-    private readonly UpValue _envUpValue;
     private bool _isRunning;
 
     private FastStackCore<LuaDebug.LuaDebugBuffer> _debugBufferPool;
 
-    internal UpValue EnvUpValue => _envUpValue;
+    internal UpValue EnvUpValue { get; }
+
     internal ref FastStackCore<LuaThread> ThreadStack => ref _threadStack;
     internal ref FastListCore<UpValue> OpenUpValues => ref _openUpValues;
     internal ref FastStackCore<LuaDebug.LuaDebugBuffer> DebugBufferPool => ref _debugBufferPool;
 
-    public LuaTable Environment => _environment;
-    public LuaTable Registry => _registry;
-    public LuaTable LoadedModules => _packages;
-    public LuaMainThread MainThread => _mainThread;
+    public LuaTable Environment { get; }
+
+    public LuaTable Registry { get; } = new();
+
+    public LuaTable LoadedModules { get; } = new();
+
+    public LuaMainThread MainThread { get; } = new();
+
     public LuaThread CurrentThread
     {
         get
         {
             if (_threadStack.TryPeek(out var thread)) return thread;
-            return _mainThread;
+            return MainThread;
         }
     }
 
@@ -57,8 +57,8 @@ public sealed class LuaState
 
     private LuaState()
     {
-        _environment = new();
-        _envUpValue = UpValue.Closed(_environment);
+        Environment = new();
+        EnvUpValue = UpValue.Closed(Environment);
     }
 
     public async ValueTask<int> RunAsync(Chunk chunk, Memory<LuaValue> buffer, CancellationToken cancellationToken = default)
