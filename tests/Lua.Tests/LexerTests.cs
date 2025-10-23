@@ -1,4 +1,5 @@
 using Lua.CodeAnalysis.Syntax;
+using NUnit.Framework.Legacy;
 
 namespace Lua.Tests;
 
