@@ -150,7 +150,7 @@ public sealed class LuaState
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal bool TryGetMetatable(LuaValue value, [NotNullWhen(true)] out LuaTable? result)
+    public bool TryGetMetatable(LuaValue value, [NotNullWhen(true)] out LuaTable? result)
     {
         result = value.Type switch
         {
@@ -169,7 +169,7 @@ public sealed class LuaState
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void SetMetatable(LuaValue value, LuaTable metatable)
+    public void SetMetatable(LuaValue value, LuaTable metatable)
     {
         switch (value.Type)
         {
