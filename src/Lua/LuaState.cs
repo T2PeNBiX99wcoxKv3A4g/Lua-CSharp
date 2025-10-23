@@ -11,61 +11,61 @@ public sealed class LuaState
     public const string DefaultChunkName = "chunk";
 
     // states
-    readonly LuaMainThread mainThread = new();
-    FastListCore<UpValue> openUpValues;
-    FastStackCore<LuaThread> threadStack;
-    readonly LuaTable packages = new();
-    readonly LuaTable environment;
-    readonly LuaTable registry = new();
-    readonly UpValue envUpValue;
-    bool isRunning;
+    private readonly LuaMainThread _mainThread = new();
+    private FastListCore<UpValue> _openUpValues;
+    private FastStackCore<LuaThread> _threadStack;
+    private readonly LuaTable _packages = new();
+    private readonly LuaTable _environment;
+    private readonly LuaTable _registry = new();
+    private readonly UpValue _envUpValue;
+    private bool _isRunning;
 
-    FastStackCore<LuaDebug.LuaDebugBuffer> debugBufferPool;
+    private FastStackCore<LuaDebug.LuaDebugBuffer> _debugBufferPool;
 
-    internal UpValue EnvUpValue => envUpValue;
-    internal ref FastStackCore<LuaThread> ThreadStack => ref threadStack;
-    internal ref FastListCore<UpValue> OpenUpValues => ref openUpValues;
-    internal ref FastStackCore<LuaDebug.LuaDebugBuffer> DebugBufferPool => ref debugBufferPool;
+    internal UpValue EnvUpValue => _envUpValue;
+    internal ref FastStackCore<LuaThread> ThreadStack => ref _threadStack;
+    internal ref FastListCore<UpValue> OpenUpValues => ref _openUpValues;
+    internal ref FastStackCore<LuaDebug.LuaDebugBuffer> DebugBufferPool => ref _debugBufferPool;
 
-    public LuaTable Environment => environment;
-    public LuaTable Registry => registry;
-    public LuaTable LoadedModules => packages;
-    public LuaMainThread MainThread => mainThread;
+    public LuaTable Environment => _environment;
+    public LuaTable Registry => _registry;
+    public LuaTable LoadedModules => _packages;
+    public LuaMainThread MainThread => _mainThread;
     public LuaThread CurrentThread
     {
         get
         {
-            if (threadStack.TryPeek(out var thread)) return thread;
-            return mainThread;
+            if (_threadStack.TryPeek(out var thread)) return thread;
+            return _mainThread;
         }
     }
 
     public ILuaModuleLoader ModuleLoader { get; set; } = FileModuleLoader.Instance;
 
     // metatables
-    LuaTable? nilMetatable;
-    LuaTable? numberMetatable;
-    LuaTable? stringMetatable;
-    LuaTable? booleanMetatable;
-    LuaTable? functionMetatable;
-    LuaTable? threadMetatable;
+    private LuaTable? _nilMetatable;
+    private LuaTable? _numberMetatable;
+    private LuaTable? _stringMetatable;
+    private LuaTable? _booleanMetatable;
+    private LuaTable? _functionMetatable;
+    private LuaTable? _threadMetatable;
 
     public static LuaState Create()
     {
         return new();
     }
 
-    LuaState()
+    private LuaState()
     {
-        environment = new();
-        envUpValue = UpValue.Closed(environment);
+        _environment = new();
+        _envUpValue = UpValue.Closed(_environment);
     }
 
     public async ValueTask<int> RunAsync(Chunk chunk, Memory<LuaValue> buffer, CancellationToken cancellationToken = default)
     {
         ThrowIfRunning();
 
-        Volatile.Write(ref isRunning, true);
+        Volatile.Write(ref _isRunning, true);
         try
         {
             var closure = new LuaClosure(this, chunk);
@@ -82,7 +82,7 @@ public sealed class LuaState
         }
         finally
         {
-            Volatile.Write(ref isRunning, false);
+            Volatile.Write(ref _isRunning, false);
         }
     }
 
@@ -93,7 +93,7 @@ public sealed class LuaState
 
     public Traceback GetTraceback()
     {
-        if (threadStack.Count == 0)
+        if (_threadStack.Count == 0)
         {
             return new(this)
             {
@@ -109,7 +109,7 @@ public sealed class LuaState
             list.Add(frame);
         }
 
-        foreach (var thread in threadStack.AsSpan())
+        foreach (var thread in _threadStack.AsSpan())
         {
             if (thread.CallStack.Count == 0) continue;
             foreach (var frame in thread.GetCallStackFrames()[1..])
@@ -154,12 +154,12 @@ public sealed class LuaState
     {
         result = value.Type switch
         {
-            LuaValueType.Nil => nilMetatable,
-            LuaValueType.Boolean => booleanMetatable,
-            LuaValueType.String => stringMetatable,
-            LuaValueType.Number => numberMetatable,
-            LuaValueType.Function => functionMetatable,
-            LuaValueType.Thread => threadMetatable,
+            LuaValueType.Nil => _nilMetatable,
+            LuaValueType.Boolean => _booleanMetatable,
+            LuaValueType.String => _stringMetatable,
+            LuaValueType.Number => _numberMetatable,
+            LuaValueType.Function => _functionMetatable,
+            LuaValueType.Thread => _threadMetatable,
             LuaValueType.UserData => value.UnsafeRead<ILuaUserData>().Metatable,
             LuaValueType.Table => value.UnsafeRead<LuaTable>().Metatable,
             _ => null
@@ -174,22 +174,22 @@ public sealed class LuaState
         switch (value.Type)
         {
             case LuaValueType.Nil:
-                nilMetatable = metatable;
+                _nilMetatable = metatable;
                 break;
             case LuaValueType.Boolean:
-                booleanMetatable = metatable;
+                _booleanMetatable = metatable;
                 break;
             case LuaValueType.String:
-                stringMetatable = metatable;
+                _stringMetatable = metatable;
                 break;
             case LuaValueType.Number:
-                numberMetatable = metatable;
+                _numberMetatable = metatable;
                 break;
             case LuaValueType.Function:
-                functionMetatable = metatable;
+                _functionMetatable = metatable;
                 break;
             case LuaValueType.Thread:
-                threadMetatable = metatable;
+                _threadMetatable = metatable;
                 break;
             case LuaValueType.UserData:
                 value.UnsafeRead<ILuaUserData>().Metatable = metatable;
@@ -202,7 +202,7 @@ public sealed class LuaState
 
     internal UpValue GetOrAddUpValue(LuaThread thread, int registerIndex)
     {
-        foreach (var upValue in openUpValues.AsSpan())
+        foreach (var upValue in _openUpValues.AsSpan())
         {
             if (upValue.RegisterIndex == registerIndex && upValue.Thread == thread)
             {
@@ -211,29 +211,26 @@ public sealed class LuaState
         }
 
         var newUpValue = UpValue.Open(thread, registerIndex);
-        openUpValues.Add(newUpValue);
+        _openUpValues.Add(newUpValue);
         return newUpValue;
     }
 
     internal void CloseUpValues(LuaThread thread, int frameBase)
     {
-        for (int i = 0; i < openUpValues.Length; i++)
+        for (var i = 0; i < _openUpValues.Length; i++)
         {
-            var upValue = openUpValues[i];
+            var upValue = _openUpValues[i];
             if (upValue.Thread != thread) continue;
-
-            if (upValue.RegisterIndex >= frameBase)
-            {
-                upValue.Close();
-                openUpValues.RemoveAtSwapback(i);
-                i--;
-            }
+            if (upValue.RegisterIndex < frameBase) continue;
+            upValue.Close();
+            _openUpValues.RemoveAtSwapback(i);
+            i--;
         }
     }
 
-    void ThrowIfRunning()
+    private void ThrowIfRunning()
     {
-        if (Volatile.Read(ref isRunning))
+        if (Volatile.Read(ref _isRunning))
         {
             throw new InvalidOperationException("the lua state is currently running");
         }
