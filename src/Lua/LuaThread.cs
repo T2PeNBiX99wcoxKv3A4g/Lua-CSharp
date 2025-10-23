@@ -11,11 +11,11 @@ public abstract class LuaThread
     public abstract ValueTask<int> ResumeAsync(LuaFunctionExecutionContext context, Memory<LuaValue> buffer, CancellationToken cancellationToken = default);
     public abstract ValueTask<int> YieldAsync(LuaFunctionExecutionContext context, Memory<LuaValue> buffer, CancellationToken cancellationToken = default);
 
-    LuaStack stack = new();
-    FastStackCore<CallStackFrame> callStack;
+    private FastStackCore<CallStackFrame> _callStack;
 
-    internal LuaStack Stack => stack;
-    internal ref FastStackCore<CallStackFrame> CallStack => ref callStack;
+    public LuaStack Stack { get; } = new();
+
+    internal ref FastStackCore<CallStackFrame> CallStack => ref _callStack;
 
     internal bool IsLineHookEnabled
     {
@@ -52,31 +52,31 @@ public abstract class LuaThread
 
     public ref readonly CallStackFrame GetCurrentFrame()
     {
-        return ref callStack.PeekRef();
+        return ref _callStack.PeekRef();
     }
 
     public ReadOnlySpan<LuaValue> GetStackValues()
     {
-        return stack.AsSpan();
+        return Stack.AsSpan();
     }
 
     public ReadOnlySpan<CallStackFrame> GetCallStackFrames()
     {
-        return callStack.AsSpan();
+        return _callStack.AsSpan();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void PushCallStackFrame(in CallStackFrame frame)
     {
-        callStack.Push(frame);
+        _callStack.Push(frame);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void PopCallStackFrame()
     {
-        if (callStack.TryPop(out var frame))
+        if (_callStack.TryPop(out var frame))
         {
-            stack.PopUntil(frame.Base);
+            Stack.PopUntil(frame.Base);
         }
         else
         {
@@ -87,9 +87,9 @@ public abstract class LuaThread
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void PopCallStackFrameUnsafe(int frameBase)
     {
-        if (callStack.TryPop())
+        if (_callStack.TryPop())
         {
-            stack.PopUntil(frameBase);
+            Stack.PopUntil(frameBase);
         }
         else
         {
@@ -100,7 +100,7 @@ public abstract class LuaThread
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void PopCallStackFrameUnsafe()
     {
-        if (!callStack.TryPop())
+        if (!_callStack.TryPop())
         {
             ThrowForEmptyStack();
         }
@@ -115,5 +115,5 @@ public abstract class LuaThread
         }
     }
 
-    static void ThrowForEmptyStack() => throw new InvalidOperationException("Empty stack");
+    private static void ThrowForEmptyStack() => throw new InvalidOperationException("Empty stack");
 }
