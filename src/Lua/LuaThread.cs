@@ -109,7 +109,7 @@ public abstract class LuaThread
     internal void DumpStackValues()
     {
         var span = GetStackValues();
-        for (int i = 0; i < span.Length; i++)
+        for (var i = 0; i < span.Length; i++)
         {
             Console.WriteLine($"LuaStack [{i}]\t{span[i]}");
         }
